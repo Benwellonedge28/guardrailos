@@ -5,6 +5,12 @@ import axios from 'axios';
 import './index.css'; // Tailwind CSS import
 import { format } from 'date-fns'; // For date formatting
 
+// shadcn/ui components (these imports assume you've run `npx shadcn-ui add button` etc.)
+import { Button } from './components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
+import { Badge } from './components/ui/badge';
+import { ScrollArea } from './components/ui/scroll-area';
+
 const queryClient = new QueryClient();
 
 // API Base URL from environment variable, provided by Docker Compose/Vite
@@ -73,50 +79,53 @@ const AuditLogList = () => {
     refetchInterval: 5000, // Refetch every 5 seconds
   });
 
-  if (isLoading) return <div className="p-4 bg-white dark:bg-gray-800 shadow rounded-lg">Loading audit logs...</div>;
-  if (error) return <div className="p-4 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 shadow rounded-lg">Error: {error.message}</div>;
+  if (isLoading) return <Card className="p-4"><CardContent>Loading audit logs...</CardContent></Card>;
+  if (error) return <Card className="p-4 bg-red-100 border-red-400 text-red-700"><CardContent>Error: {error.message}</CardContent></Card>;
 
-  const getDecisionColor = (decision: string) => {
+  const getDecisionVariant = (decision: string) => {
     switch (decision) {
-      case 'allow': return 'text-green-600 dark:text-green-400';
-      case 'deny_policy': return 'text-red-600 dark:text-red-400';
-      case 'blocked_lobstertrap': return 'text-purple-600 dark:text-purple-400';
-      case 'pending_approval_policy': return 'text-yellow-600 dark:text-yellow-400';
-      case 'lobstertrap_operational_error': return 'text-orange-600 dark:text-orange-400';
-      default: return 'text-gray-600 dark:text-gray-400';
+      case 'allow': return 'success';
+      case 'deny_policy': return 'destructive';
+      case 'blocked_lobstertrap': return 'info'; // Custom variant or use secondary
+      case 'pending_approval_policy': return 'warning'; // Custom variant or use secondary
+      case 'lobstertrap_operational_error': return 'destructive';
+      default: return 'secondary';
     }
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
-      <div className="px-6 py-4 border-b dark:border-gray-700">
-        <h2 className="text-xl font-semibold">Audit Logs</h2>
-      </div>
-      <div className="p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
-        {data?.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400">No audit logs found.</p>
-        ) : (
-          <ul className="space-y-4">
-            {data?.map((log) => (
-              <li key={log.id} className="p-4 border dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800">
-                <div className="flex justify-between items-center mb-2">
-                  <span className={`font-medium ${getDecisionColor(log.decision)}`}>Decision: {log.decision}</span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">{format(new Date(log.timestamp), 'MMM dd, yyyy HH:mm:ss')}</span>
-                </div>
-                <p className="text-sm text-gray-700 dark:text-gray-300">
-                  <span className="font-semibold">Agent:</span> {log.agent_id} <br />
-                  <span className="font-semibold">Action:</span> {log.action} <br />
-                  {log.target_resource && <><span className="font-semibold">Resource:</span> {log.target_resource} <br /></>}
-                  {log.policy_id && <><span className="font-semibold">Policy ID:</span> {log.policy_id} <br /></>}
-                  {log.lobster_trap_score !== undefined && <><span className="font-semibold">LT Score:</span> {log.lobster_trap_score.toFixed(2)} <br /></>}
-                </p>
-                {/* You can add more details here, perhaps in an expandable section */}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
+    <Card className="shadow-lg rounded-lg overflow-hidden">
+      <CardHeader>
+        <CardTitle>Audit Logs</CardTitle>
+        <CardDescription>Recent actions by AI agents and policy decisions.</CardDescription>
+      </CardHeader>
+      <CardContent className="p-4">
+        <ScrollArea className="h-[calc(100vh-320px)] pr-4"> {/* Adjust height dynamically */}
+          {data?.length === 0 ? (
+            <p className="text-muted-foreground">No audit logs found.</p>
+          ) : (
+            <ul className="space-y-4">
+              {data?.map((log) => (
+                <Card key={log.id} className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <Badge variant={getDecisionVariant(log.decision)} className="capitalize">{log.decision.replace(/_/g, ' ')}</Badge>
+                    <span className="text-sm text-muted-foreground">{format(new Date(log.timestamp), 'MMM dd, yyyy HH:mm:ss')}</span>
+                  </div>
+                  <p className="text-sm text-foreground">
+                    <span className="font-semibold">Agent:</span> {log.agent_id} <br />
+                    <span className="font-semibold">Action:</span> {log.action} <br />
+                    {log.target_resource && <><span className="font-semibold">Resource:</span> {log.target_resource} <br /></>}
+                    {log.policy_id && <><span className="font-semibold">Policy ID:</span> {log.policy_id} <br /></>}
+                    {log.lobster_trap_score !== undefined && <><span className="font-semibold">LT Score:</span> {log.lobster_trap_score.toFixed(2)} <br /></>}
+                  </p>
+                  {/* You can add more details here, perhaps in an expandable section */}
+                </Card>
+              ))}
+            </ul>
+          )}
+        </ScrollArea>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -149,57 +158,69 @@ const ApprovalRequestList = () => {
     approveMutation.mutate({ id, payload: { approver_id: 'manager-user-123', status: 'denied', approval_reason: 'Denied by manager, violates company policy.' } });
   };
 
-  if (isLoading) return <div className="p-4 bg-white dark:bg-gray-800 shadow rounded-lg">Loading approval requests...</div>;
-  if (error) return <div className="p-4 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 shadow rounded-lg">Error: {error.message}</div>;
+  if (isLoading) return <Card className="p-4"><CardContent>Loading approval requests...</CardContent></Card>;
+  if (error) return <Card className="p-4 bg-red-100 border-red-400 text-red-700"><CardContent>Error: {error.message}</CardContent></Card>;
+
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'pending': return 'warning';
+      case 'approved': return 'success';
+      case 'denied': return 'destructive';
+      default: return 'secondary';
+    }
+  }
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
-      <div className="px-6 py-4 border-b dark:border-gray-700">
-        <h2 className="text-xl font-semibold">Approval Requests</h2>
-      </div>
-      <div className="p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
-        {data?.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400">No approval requests found.</p>
-        ) : (
-          <ul className="space-y-4">
-            {data?.map((request) => (
-              <li key={request.id} className="p-4 border dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800">
-                <div className="flex justify-between items-center mb-2">
-                  <span className={`font-medium ${request.status === 'pending' ? 'text-yellow-600 dark:text-yellow-400' : request.status === 'approved' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>Status: {request.status.toUpperCase()}</span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">{format(new Date(request.timestamp), 'MMM dd, yyyy HH:mm:ss')}</span>
-                </div>
-                <p className="text-sm text-gray-700 dark:text-gray-300">
-                  <span className="font-semibold">Agent:</span> {request.agent_id} <br />
-                  <span className="font-semibold">Action:</span> {request.action_type} <br />
-                  <span className="font-semibold">Payload Hash:</span> {request.payload_hash.substring(0, 10)}... <br />
-                  {request.expires_at && <><span className="font-semibold">Expires:</span> {format(new Date(request.expires_at), 'MMM dd, yyyy HH:mm')} <br /></>}
-                  {request.approver_id && <><span className="font-semibold">Approver:</span> {request.approver_id} <br /></>}
-                  {request.approval_reason && <><span className="font-semibold">Reason:</span> {request.approval_reason} <br /></>}
-                </p>
-                {request.status === 'pending' && (
-                  <div className="mt-3 space-x-2">
-                    <button
-                      onClick={() => handleApprove(request.id)}
-                      className="px-4 py-2 bg-green-600 text-white dark:bg-green-700 rounded-md hover:bg-green-700 dark:hover:bg-green-800 transition-colors"
-                      disabled={approveMutation.isPending}
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleDeny(request.id)}
-                      className="px-4 py-2 bg-red-600 text-white dark:bg-red-700 rounded-md hover:bg-red-700 dark:hover:bg-red-800 transition-colors"
-                      disabled={approveMutation.isPending}
-                    >
-                      Deny
-                    </button>
+    <Card className="shadow-lg rounded-lg overflow-hidden">
+      <CardHeader>
+        <CardTitle>Approval Requests</CardTitle>
+        <CardDescription>Actions awaiting human review and approval.</CardDescription>
+      </CardHeader>
+      <CardContent className="p-4">
+        <ScrollArea className="h-[calc(100vh-320px)] pr-4"> {/* Adjust height dynamically */}
+          {data?.length === 0 ? (
+            <p className="text-muted-foreground">No approval requests found.</p>
+          ) : (
+            <ul className="space-y-4">
+              {data?.map((request) => (
+                <Card key={request.id} className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <Badge variant={getStatusVariant(request.status)} className="capitalize">{request.status}</Badge>
+                    <span className="text-sm text-muted-foreground">{format(new Date(request.timestamp), 'MMM dd, yyyy HH:mm:ss')}</span>
                   </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
+                  <p className="text-sm text-foreground">
+                    <span className="font-semibold">Agent:</span> {request.agent_id} <br />
+                    <span className="font-semibold">Action:</span> {request.action_type} <br />
+                    <span className="font-semibold">Payload Hash:</span> {request.payload_hash.substring(0, 10)}... <br />
+                    {request.expires_at && <><span className="font-semibold">Expires:</span> {format(new Date(request.expires_at), 'MMM dd, yyyy HH:mm')} <br /></>}
+                    {request.approver_id && <><span className="font-semibold">Approver:</span> {request.approver_id} <br /></>}
+                    {request.approval_reason && <><span className="font-semibold">Reason:</span> {request.approval_reason} <br /></>}
+                  </p>
+                  {request.status === 'pending' && (
+                    <div className="mt-3 space-x-2">
+                      <Button
+                        variant="success" // Assuming a success variant for green button
+                        onClick={() => handleApprove(request.id)}
+                        disabled={approveMutation.isPending}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => handleDeny(request.id)}
+                        disabled={approveMutation.isPending}
+                      >
+                        Deny
+                      </Button>
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </ul>
+          )}
+        </ScrollArea>
+      </CardContent>
+    </Card>
   );
 };
 
