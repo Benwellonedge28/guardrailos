@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Add any custom styles here if needed */
+/* For example, a basic dark mode toggle, or scrollbar styling */
+body {
+  font-family: 'Inter', sans-serif; /* Example font */
+}
+
+/* Basic dark mode toggle: add 'dark' class to html element */
+/* html.dark {
+  background-color: #1a202c;
+  color: #a0aec0;
+} */
